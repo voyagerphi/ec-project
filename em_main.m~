@@ -1,0 +1,469 @@
+function em_main()
+
+    % GLOBAL VARIABLES
+    global OBS_ID EMP_ID winW winH senW;
+    % -1 -> Obstacle
+    %  ]0,1] -> Robot Probability
+    OBS_ID = -1;
+    EMP_ID =  0; % for map reading
+    
+
+    
+% Draw and initialize Window
+    % Window Size
+    winW = 900;
+    winH = 500;
+    
+    % Generate figure/window
+    mFigure = figure();
+    mFigure.Position = [20 25 winW winH];               
+    
+    % Draw UI
+    draw_gui(mFigure);        
+    
+    
+    
+       
+        
+        
+    %% *** Functions ***
+    
+    % Reads a file with map instructions and extracts its values to a
+    % matrix
+    function [mapMatrix, emptyCount] = read_map()      
+                
+        % Initial Height
+        mapHeight = 0;
+        
+        % Empty Cell Count
+        emptyCount = 0;
+        
+        % Open file and read two headers
+        fileMap= fopen('map_file.txt');
+        [~] = fgets(fileMap);        
+        mapWidth = str2double(fgets(fileMap));
+        [~] = fgets(fileMap);
+        
+        % Routine that reads the map into a matrix
+        while true
+            
+            % Read map line
+            MAP = fread(fileMap, mapWidth, 'uint8');
+            % Test End of File
+            if feof(fileMap)
+                break
+            end
+            % Update Height
+            mapHeight =  mapHeight + 1;
+            % Read new line character
+            [~] = fread(fileMap, 1, 'uint8');
+            for j = 1:1:length(MAP)
+                switch(MAP(j))
+                    case '-'
+                        mMap(mapHeight,j) = OBS_ID;
+                    case '0'
+                        mMap(mapHeight,j) = EMP_ID;
+                        emptyCount = emptyCount + 1;
+                    otherwise 
+                        mMap(mapHeight,j) = OBS_ID;
+                end
+            end
+        end
+
+        % Close File
+        fclose(fileMap);
+        
+        % Transpose Coordinates
+        mMap = mMap';
+        
+        % Revert y axis
+        temp = mMap;
+        for i = 1:1:size(mMap,2)
+            mMap(:,i) = temp(:,1+size(mMap,1)-i);
+        end
+
+        % Return Map
+        mapMatrix = mMap;        
+    end
+     
+    % Draws the map stored in the matrix read from the file
+    function  [mDrawing] = draw_map(mapFig, mMap, plotAxis) 
+        cla(plotAxis)
+        
+        mTop = size(mMap,1) + 1;
+        mLen = size(mMap,2) + 1;
+        
+        mDrawing = {};
+        mDrawing.mapPos = cell(size(mMap));
+        
+        
+        for i =1:1:size(mMap,1)            
+            % Draw Outter Obstacles
+            figure(mapFig)     
+            rectangle(plotAxis,'Position',[i,0,1,1],'FaceColor',[0 0 0],'LineWidth',2, 'Curvature',0.05);
+            rectangle(plotAxis,'Position',[i,mLen,1,1],'FaceColor',[0 0 0],'LineWidth',2, 'Curvature',0.05);
+            for j=1:1:size(mMap,2)                                
+                % Draw Inner Obstacles
+                if mMap(i,j) == OBS_ID
+                    figure(mapFig)     
+                    mDrawing.mapPos{i,j} = rectangle(plotAxis,'Position',[i,j,1,1],'FaceColor',[0 0 0],'LineWidth',0.01, 'Curvature',0.05);
+                else
+                    mDrawing.mapPos{i,j} = rectangle(plotAxis,'Position',[i,j,1,1],'FaceColor',[1 1 1],'LineWidth',0.01, 'Curvature',0);
+                end
+            end
+        end
+        % Draw Top and Bottom Obstacles
+        for j=1:1:size(mMap,2)+2                                               
+            figure(mapFig)     
+            rectangle(plotAxis,'Position',[0,j-1,1,1],'FaceColor',[0 0 0],'LineWidth',2, 'Curvature',0.05);    
+            rectangle(plotAxis,'Position',[mTop,j-1,1,1],'FaceColor',[0 0 0],'LineWidth',2, 'Curvature',0.05); 
+        end
+    end
+
+    function refresh_map(mMap, mDrawing)
+        for i=1:1:size(mMap,1)
+            for j=1:1:size(mMap,2)
+                if mMap(i,j) ~= OBS_ID
+                    mDrawing.mapPos{i,j}.FaceColor = [1 1 1-mMap(i,j) ];
+                end
+            end
+        end
+    end
+
+
+    % Initializes the robot positiopm and draws it
+    function [mRobotPlot, mRobotPos] = init_robot(mapFig, mMap, plotAxis)
+               
+        % Generate Robot
+        while(true)
+            mRobotPos = randi([1 length(mMap)],[2,1]);
+            if mMap(mRobotPos(1), mRobotPos(2)) ~= OBS_ID
+                break
+            end
+        end
+        
+        % Draw Robot
+        figure(mapFig)     
+        mRobotPlot = rectangle(plotAxis,'Position',[mRobotPos(1),mRobotPos(2),1,1],'FaceColor',[1 0 0],'LineWidth',1, 'Curvature',1);
+
+    end
+     
+
+    % Draws the user interface on the window and returns the respective
+    % handles
+    function [] = draw_gui(mFigure)
+        figure(mFigure)
+        
+        % Help Text
+        nMove = uicontrol('Style', 'text', 'FontSize', 10, 'ForegroundColor', 'cyan');
+        nMove.Position = [0.05*winW 0.85*winH 0.4*winW 0.05*winH];
+        nMove.String =  'Press an option to start';
+        
+        % Buttons
+        bLiveMove = uicontrol('Style', 'togglebutton', 'Callback', @live_movement);
+        bLiveMove.Position = [0.05*winW 0.8*winH 0.2*winW 0.05*winH];
+        bLiveMove.String =  'Live Move';
+        
+        bRandomMove = uicontrol('Style', 'pushbutton');
+        bRandomMove.Position = [0.05*winW 0.75*winH 0.2*winW 0.05*winH];
+        bRandomMove.String =  'Random Move';
+        bRandomMove.Callback =  @random_move;                        
+    end
+
+    function [nMove, eObs] = live_gui(mFigure)
+        
+        figure(mFigure)
+        % Text
+        nMove = uicontrol('Style', 'text', 'FontSize', 14, 'ForegroundColor', 'black');
+        nMove.Position = [0.25*winW 0.8*winH 0.15*winW 0.05*winH];
+        nMove.String =  'Moves: ';
+        
+        % Text
+        nMove = uicontrol('Style', 'text', 'FontSize', 14, 'ForegroundColor', 'black');
+        nMove.Position = [0.4*winW 0.8*winH 0.05*winW 0.05*winH];
+        nMove.String =  num2str(0);
+        
+        % Text
+        eObs = uicontrol('Style', 'text', 'FontSize', 14, 'ForegroundColor', 'red');
+        eObs.Position = [200 460 200 35];
+        eObs.String =  'OBSTACLE';
+        eObs.Visible =  'off'; 
+    end
+
+    % Draws the sensor indicators and returns the respective handles
+    function [sUP, sDN, sLT, sRT] = draw_sensor(mFigure, sensorAx)
+        figure(mFigure)        
+        % Surround
+        rectangle(sensorAx,'Position',senW * [0.2 0.2 0.5 0.5],'FaceColor',[1 1 1],'LineWidth',2, 'Curvature',0.05);         
+        % Robot
+        rectangle(sensorAx,'Position',senW * [0.4 0.4 0.1 0.1],'FaceColor',[1 0 0],'LineWidth',1, 'Curvature',1);        
+        % Up
+        sUP = rectangle(sensorAx,'Position',senW * [0.4 0.55 0.1 0.1],'FaceColor',[1 1 1],'LineWidth',2, 'Curvature',0.05); 
+        % Down
+        sDN = rectangle(sensorAx,'Position',senW * [0.4 0.25 0.1 0.1],'FaceColor',[1 1 1],'LineWidth',2, 'Curvature',0.05); 
+        % Left
+        sLT = rectangle(sensorAx,'Position',senW * [0.25 0.4 0.1 0.1],'FaceColor',[1 1 1],'LineWidth',2, 'Curvature',0.05); 
+        % Right
+        sRT = rectangle(sensorAx,'Position',senW * [0.55 0.4 0.1 0.1],'FaceColor',[1 1 1],'LineWidth',2, 'Curvature',0.05); 
+        
+    end
+
+   
+
+    % Moves robot if there is no obstacle in the future position
+    function [N_MOVE, mRobotPos, mRobotPlot] = move_robot(direction, mMap, mRobotPos, mRobotPlot, N_MOVE, NMOVETEXT, EOBS)  
+        EOBS.Visible =  'off';
+        nextPosition = mRobotPos;
+        switch(direction)
+            case 1
+                nextPosition(2) = nextPosition(2) + 1;
+            case 2
+                nextPosition(1) = nextPosition(1) + 1; 
+            case 3
+                nextPosition(2) = nextPosition(2) - 1;
+            case 4
+                nextPosition(1) = nextPosition(1) - 1;
+            otherwise
+                nextPosition = mRobotPos;                 
+        end
+        % Check if inside map
+         if nextPosition(1) < 1 || nextPosition(2) < 1  
+            nextPosition = mRobotPos; 
+            EOBS.Visible =  'on';
+            return;
+        end
+        if nextPosition(1) > size(mMap, 1) || nextPosition(2) > size(mMap, 2)            
+            nextPosition = mRobotPos;
+            EOBS.Visible =  'on';
+            return;
+        end 
+        % Check if there is obstacle
+        if mMap(nextPosition(1), nextPosition(2)) == OBS_ID            
+            nextPosition = mRobotPos;
+            EOBS.Visible =  'on';
+            return;
+        end
+       
+        mRobotPos = nextPosition;
+        mRobotPlot.Position = [nextPosition(1), nextPosition(2), 1,1];
+        
+        N_MOVE = N_MOVE + 1;
+        NMOVETEXT.String =  num2str(N_MOVE);
+                        
+    end
+
+    
+    
+
+    function [initialVector, mMap] = get_initial_distribution(nEmptyCells, mMap)
+        
+        initialVector = zeros( size(mMap,1) * size(mMap,2) ,1);
+        
+        for i=1:1:size(mMap,1)
+            for j=1:1:size(mMap,2) 
+                if mMap(i,j) ~= OBS_ID
+                    initialVector(i + j * size(mMap,1)) = 1/nEmptyCells;
+                    mMap(i,j) = 1/nEmptyCells;
+                end
+            end
+        end                    
+    end
+
+    function [ax, ax2] = draw_plot()
+         % Initialize Map Area
+        ax = axes('Units', 'pixels');
+        ax.Position = [0.5*winW 0.05*winH 0.45*winW 0.45*winW];
+        axis([0 22 0 22])
+        axis off;
+        
+        % Initialize Sensor Area
+        senW = 0.4 * winW;
+        ax2 = axes('Units', 'pixels');
+        ax2.Position = [0.05 * winW, 0.05 * winH, senW, senW];    
+        axis off;        
+    end
+
+
+    function live_movement(src,~)
+        
+        % Hide Button
+        src.Visible = 'off';
+        
+        if isMultipleCall();  return;  end
+        
+        % End Program Control
+        mContinue = true;
+        % Move Counter
+        N_MOVE = 0;
+        
+        % Get Current Figure
+        myFigure = gcf;
+        
+        [NMOVETEXT, EOBS] = live_gui(myFigure);
+        
+        % Draw Plot Areas
+        [ax, ax2] = draw_plot();
+        
+        % Read Map
+        [mapMatrix, nEmpty] = read_map();
+    
+        % Draw Map in figure
+        axes(ax);
+        mapDrawing = draw_map(myFigure, mapMatrix, ax);        
+    
+        % Draw Sensor Indicators
+        [sensorU, sensorD, sensorL, sensorR] = draw_sensor(myFigure, ax2);        
+        
+        % Hidden Markov Model Parameters
+        % Compute Initial Matrix
+        [mPi, mapMatrix] = get_initial_distribution(nEmpty, mapMatrix);
+        refresh_map(mapMatrix, mapDrawing)
+    
+        % Compute Transition Matrix
+    
+        % Compute Observations Matrix
+        
+        % Initialize robot
+        % Get robot initial position and draw robot
+        [mRobotPlot, mRobotPos] = init_robot(myFigure, mapMatrix, ax);
+
+        % Set initial probabilities
+
+        % Initialize Recursion
+        
+        
+        while true
+            waitforbuttonpress
+            mKey = get(gcf, 'CurrentKey');
+            
+            % Move according to command
+            switch (mKey)            
+                case 'uparrow'
+                    [N_MOVE, mRobotPos, mRobotPlot] = move_robot(1, mapMatrix, mRobotPos, mRobotPlot, N_MOVE, NMOVETEXT, EOBS);
+                case 'rightarrow'
+                    [N_MOVE, mRobotPos, mRobotPlot] = move_robot(2, mapMatrix, mRobotPos, mRobotPlot, N_MOVE, NMOVETEXT, EOBS);
+                case 'downarrow'
+                    [N_MOVE, mRobotPos, mRobotPlot] = move_robot(3, mapMatrix, mRobotPos, mRobotPlot, N_MOVE, NMOVETEXT, EOBS);
+                case 'leftarrow'
+                    [N_MOVE, mRobotPos, mRobotPlot] = move_robot(4, mapMatrix, mRobotPos, mRobotPlot, N_MOVE, NMOVETEXT, EOBS);
+                case 'space'
+                    [N_MOVE, mRobotPos, mRobotPlot] = move_robot(0, mapMatrix, mRobotPos, mRobotPlot, N_MOVE, NMOVETEXT, EOBS);
+                otherwise
+                    [N_MOVE, mRobotPos, mRobotPlot] = move_robot(0, mapMatrix, mRobotPos, mRobotPlot, N_MOVE, NMOVETEXT, EOBS);
+            end
+
+             % Take Measurements
+            [measU, measR, measD, measL] = sense_obstacles(mRobotPos, mapMatrix, sensorU, sensorR, sensorD, sensorL);
+            
+            % Update the recursion estimate
+            %mapMatrix = update_estimate(mapMatrix, , mTrasitionMat, mObservationMat, measU, measR, measD, measL)
+            
+            % Refresh map with probabilities
+            refresh_map(mapMatrix, mapDrawing)
+
+            % Finish if f is pressed
+            if mKey == 'f'
+                break;
+            end
+                      
+        end
+        
+        src.Visible = 'on';
+        cla(ax)
+        cla(ax2)
+    end
+
+
+     % Moves the robot in a random direction (including not moving)
+    function random_move(~,~)       
+        
+        
+        
+        % Get Current Figure
+        myFigure = gcf;
+        
+        [nMovesText, errorObs] = live_gui(myFigure);
+        
+        nMoves = 0;
+        
+        % Draw Plot Areas
+        [ax, ax2] = draw_plot();
+        
+        % Read Map
+        [mapMatrix, nEmpty] = read_map();
+    
+        % Draw Map in figure
+        axes(ax);
+        mapDrawing = draw_map(myFigure, mapMatrix, ax);        
+    
+        % Draw Sensor Indicators
+        [sensorU, sensorD, sensorL, sensorR] = draw_sensor(myFigure, ax2); 
+        
+        % Hidden Markov Model Parameters
+        % Compute Initial Matrix
+        [mPi, mapMatrix] = get_initial_distribution(nEmpty, mapMatrix);
+        refresh_map(mapMatrix, mapDrawing)
+    
+        % Compute Transition Matrix
+        %mTrasitionMat = compute_transition();
+        
+        % Compute Observations Matrix
+        %mObservationMat = compute_observations();
+        
+        % Initialize robot
+        % Get robot initial position and draw robot
+        [mRobotPlot, mRobotPos] = init_robot(myFigure, mapMatrix, ax);
+        
+        nSteps = inputdlg('Enter the number of movements of the robot.');
+        
+        mTimer = timer('TimerFcn',@(~,~)disp('Timer'), 'StartDelay', 1.5);
+        for it= 1:1:str2double(nSteps{1}) 
+            % Timer start
+            start(mTimer)
+            
+            % Check if a move was made or if it tried to hit a wall
+            nMovesPast = nMoves;
+            while nMoves == nMovesPast
+                [nMoves, mRobotPos, mRobotPlot] = move_robot(randi([0 4]), mapMatrix, mRobotPos, mRobotPlot, nMoves, nMovesText, errorObs);
+            end
+            
+            % Take Measurements
+            [measU, measR, measD, measL] = sense_obstacles(mRobotPos, mapMatrix, sensorU, sensorR, sensorD, sensorL);
+            
+            % Update the recursion estimate
+            %mapMatrix = update_estimate(mapMatrix, , mTrasitionMat, mObservationMat, measU, measR, measD, measL)
+            
+            % Refresh map with probabilities
+            refresh_map(mapMatrix, mapDrawing)
+                        
+            % Wait a bit so that user can see results in map
+            wait(mTimer)
+        end
+        
+        waitforbuttonpress
+        cla(ax)
+        cla(ax2)
+        
+    end
+
+    function flag=isMultipleCall()
+        flag = false; 
+        % Get the stack
+        s = dbstack();
+        if numel(s)<= 2
+        % Stack too short for a multiple call
+        return
+        end
+
+        % How many calls to the calling function are in the stack?
+        names = {s(:).name};
+        TF = strcmp(s(2).name,names);
+        count = sum(TF);
+        if count>1
+        % More than 1
+        flag = true; 
+        end
+    end
+
+
+end
