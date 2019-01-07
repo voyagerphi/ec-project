@@ -11,6 +11,6 @@
         
         % Draw Robot
         figure(mapFig)     
-        mRobotPlot = rectangle(plotAxis,'Position',[mRobotPos(1),mRobotPos(2),1,1],'FaceColor',[1 0 0],'LineWidth',1, 'Curvature',1);
+        mRobotPlot = rectangle(plotAxis,'Position',[mRobotPos(1),mRobotPos(2),0.5,0.5],'FaceColor',[1 0 0],'LineWidth',1, 'Curvature',1);
 
     end

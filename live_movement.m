@@ -31,22 +31,29 @@ function live_movement(src,~, OBS_ID,EMP_ID, startText)
     % Draw Sensor Indicators
     [sensorU, sensorD, sensorL, sensorR] = draw_sensor(myFigure, ax2, senW);        
 
-    % Hidden Markov Model Parameters
+     % Hidden Markov Model Parameters
     % Compute Initial Matrix
-    [mPi, mapMatrix] = get_initial_distribution(nEmpty, mapMatrix, OBS_ID);
-    refresh_map(mapMatrix, mapDrawing, OBS_ID);
+    [iDistribution, mapMatrix] = get_initial_distribution(nEmpty, mapMatrix, OBS_ID);    
 
     % Compute Transition Matrix
+    transitionMatrix = compute_transition(mapMatrix, OBS_ID);
 
     % Compute Observations Matrix
-
+    observationMatrix = compute_observation_matrix(mapMatrix, OBS_ID);
+    
     % Initialize robot
     % Get robot initial position and draw robot
     [mRobotPlot, mRobotPos] = init_robot(myFigure, mapMatrix, ax, OBS_ID);
-
-    % Set initial probabilities
-
-    % Initialize Recursion
+    
+    % Get First Observation
+    [measU, measR, measD, measL] = sense_obstacles(mRobotPos, mapMatrix, sensorU, sensorR, sensorD, sensorL);
+    
+    % Get First Estimate
+    observationVector = [measU measR measD measL];
+    mapMatrix = first_estimate(mapMatrix, iDistribution, observationMatrix, observationVector, OBS_ID);
+    
+    % Refresh Map
+    refresh_map(mapMatrix, mapDrawing, OBS_ID)
 
 
     while true
@@ -78,8 +85,9 @@ function live_movement(src,~, OBS_ID,EMP_ID, startText)
         [measU, measR, measD, measL] = sense_obstacles(mRobotPos, mapMatrix, sensorU, sensorR, sensorD, sensorL);
 
         % Update the recursion estimate
-        %mapMatrix = update_estimate(mapMatrix, , mTrasitionMat, mObservationMat, measU, measR, measD, measL)
-
+        observationVector = [measU measR measD measL];
+        mapMatrix = update_estimate(mapMatrix, transitionMatrix, observationMatrix, observationVector, OBS_ID);
+        
         % Refresh map with probabilities
         refresh_map(mapMatrix, mapDrawing, OBS_ID)       
 

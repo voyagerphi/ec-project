@@ -8,7 +8,7 @@ function [nMove, eObs, fInfo] = live_gui(mFigure, winW, winH)
 
     % Text
     nMove = uicontrol('Style', 'text', 'FontSize', 14, 'ForegroundColor', 'black');
-    nMove.Position = [0.4*winW 0.8*winH 0.05*winW 0.05*winH];
+    nMove.Position = [0.4*winW 0.8*winH 0.08*winW 0.05*winH];
     nMove.String =  num2str(0);
 
     % Text

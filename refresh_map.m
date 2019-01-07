@@ -2,7 +2,13 @@ function refresh_map(mMap, mDrawing, OBS_ID)
         for i=1:1:size(mMap,1)
             for j=1:1:size(mMap,2)
                 if mMap(i,j) ~= OBS_ID
-                    mDrawing.mapPos{i,j}.FaceColor = [1 1 1-mMap(i,j) ];
+                    
+                    % Color Scale Interpolation
+                    cScale = [1 1 1; 0.7 1 0.7; 0 1 1; 1 1 0.5; 0.5 1 0.5 ];                    
+                    xScale = [0 0.000001 0.05 0.5 1];                    
+                    mColor = interp1(xScale, cScale, mMap(i,j));                    
+                    mDrawing.mapPos{i,j}.FaceColor = mColor;                                                              
+                    
                 end
             end
         end

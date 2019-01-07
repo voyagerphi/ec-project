@@ -16,24 +16,21 @@
         end
         % Check if inside map
          if nextPosition(1) < 1 || nextPosition(2) < 1  
-            nextPosition = mRobotPos; 
             errorObs.Visible =  'on';
             return;
         end
         if nextPosition(1) > size(mMap, 1) || nextPosition(2) > size(mMap, 2)            
-            nextPosition = mRobotPos;
             errorObs.Visible =  'on';
             return;
         end 
         % Check if there is obstacle
         if mMap(nextPosition(1), nextPosition(2)) == OBS_ID            
-            nextPosition = mRobotPos;
             errorObs.Visible =  'on';
             return;
         end
        
         mRobotPos = nextPosition;
-        mRobotPlot.Position = [nextPosition(1), nextPosition(2), 1,1];
+        mRobotPlot.Position = [nextPosition(1), nextPosition(2), 0.5, 0.5];
         
         nMoves = nMoves + 1;
         nMovesText.String =  num2str(nMoves);
